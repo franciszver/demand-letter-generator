@@ -28,14 +28,14 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Invalid file type. Please upload PDF, DOCX, or image files.');
+      toast.error('This document format isn\'t supported. Please upload PDF, Word, or image files.');
       return;
     }
 
     // Validate file size (50MB)
     const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error('File size exceeds 50MB limit.');
+      toast.error('File size exceeds the 50MB limit. Please upload a smaller file.');
       return;
     }
 
@@ -59,14 +59,14 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
       });
 
       if (response.data.success) {
-        toast.success('File uploaded successfully! Processing in background...');
+        toast.success('Case document uploaded successfully! Processing in background...');
         if (onUploadSuccess) {
           onUploadSuccess(response.data.data!.documentId);
         }
       }
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error(error.response?.data?.error || 'Upload failed');
+      toast.error(error.response?.data?.error || 'Unable to upload case document. Please try again.');
     } finally {
       setUploading(false);
       setProgress(0);
@@ -90,17 +90,17 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
         {...getRootProps()}
         className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
           isDragActive
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
+            ? 'border-steno-teal bg-steno-teal/10'
+            : 'border-steno-gray-300 hover:border-steno-teal'
         } ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <input {...getInputProps()} />
         {uploading ? (
           <div className="space-y-2">
-            <div className="text-gray-600">Uploading... {progress}%</div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="text-steno-charcoal font-medium">Uploading case document... {progress}%</div>
+            <div className="w-full bg-steno-gray-200 rounded-full h-2">
               <div
-                className="bg-blue-600 h-2 rounded-full transition-all"
+                className="bg-steno-teal h-2 rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -108,7 +108,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
         ) : (
           <div className="space-y-2">
             <svg
-              className="mx-auto h-12 w-12 text-gray-400"
+              className="mx-auto h-12 w-12 text-steno-teal"
               stroke="currentColor"
               fill="none"
               viewBox="0 0 48 48"
@@ -120,13 +120,13 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
                 strokeLinejoin="round"
               />
             </svg>
-            <p className="text-gray-600">
+            <p className="text-steno-charcoal font-medium">
               {isDragActive
-                ? 'Drop the file here'
-                : 'Drag & drop a file here, or click to select'}
+                ? 'Drop the case document here'
+                : 'Drag & drop a case document here, or click to select'}
             </p>
-            <p className="text-sm text-gray-500">
-              PDF, DOCX, or images (max 50MB)
+            <p className="text-sm text-steno-charcoal-light">
+              PDF, Word (DOCX), or images (max 50MB)
             </p>
           </div>
         )}

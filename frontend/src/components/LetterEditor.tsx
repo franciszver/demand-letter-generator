@@ -41,7 +41,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         // Update editor with remote changes
         const newContent = ContentState.createFromText(data.content);
         setEditorState(EditorState.createWithContent(newContent));
-        toast.info(`${data.userName} made changes`);
+        toast.info(`${data.userName} updated the letter`);
       });
 
       return () => {
@@ -75,9 +75,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     try {
       await onRefine(refinementInstructions);
       setRefinementInstructions('');
-      toast.success('Letter refined successfully');
+      toast.success('Letter refinement applied successfully');
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Refinement failed');
+      toast.error(error.response?.data?.error || 'Unable to refine letter. Please try again.');
     } finally {
       setIsRefining(false);
     }
@@ -87,12 +87,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
     <div className="space-y-4">
       {/* Active users indicator */}
       {activeUsers.length > 0 && (
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <span>Active users:</span>
+        <div className="flex items-center gap-2 text-sm text-steno-charcoal-light">
+          <span className="font-medium">Collaborating attorneys:</span>
           {activeUsers.map((user) => (
             <span
               key={user.id}
-              className="px-2 py-1 bg-blue-100 text-blue-800 rounded"
+              className="px-2 py-1 bg-steno-teal/10 text-steno-teal-dark rounded font-medium"
             >
               {user.name}
             </span>
@@ -101,38 +101,41 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
       )}
 
       {/* Editor */}
-      <div className="border border-gray-300 rounded-lg p-4 min-h-[400px] bg-white">
+      <div className="border border-steno-gray-300 rounded-lg p-4 min-h-[400px] bg-white shadow-sm">
         <Editor
           editorState={editorState}
           onChange={setEditorState}
-          placeholder="Start typing your demand letter..."
+          placeholder="Begin drafting your demand letter. The AI will assist with structure and legal language..."
         />
       </div>
 
       {/* Last saved indicator */}
       {lastSaved && (
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-steno-gray-500">
           Last saved: {lastSaved.toLocaleTimeString()}
         </div>
       )}
 
       {/* Refinement section */}
       {showRefinement && onRefine && (
-        <div className="border-t pt-4">
-          <h3 className="text-lg font-semibold mb-2">AI Refinement</h3>
+        <div className="border-t border-steno-gray-200 pt-4">
+          <h3 className="text-lg font-heading font-semibold mb-2 text-steno-navy">AI Refinement</h3>
+          <p className="text-sm text-steno-charcoal-light mb-3">
+            Provide specific instructions to refine the letter's tone, content, or structure.
+          </p>
           <textarea
             value={refinementInstructions}
             onChange={(e) => setRefinementInstructions(e.target.value)}
-            placeholder="Enter instructions for refining the letter (e.g., 'Make the tone more formal', 'Add more details about the damages')"
-            className="w-full p-3 border border-gray-300 rounded-lg mb-2"
+            placeholder="Example: 'Make the tone more formal and professional', 'Add more detail about the property damage', 'Strengthen the legal arguments in paragraph 3'"
+            className="w-full p-3 border border-steno-gray-300 rounded-lg mb-2 focus:ring-steno-teal focus:border-steno-teal"
             rows={3}
           />
           <button
             onClick={handleRefine}
             disabled={!refinementInstructions.trim() || isRefining}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-steno-teal text-white rounded-lg hover:bg-steno-teal-dark disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
           >
-            {isRefining ? 'Refining...' : 'Refine Letter'}
+            {isRefining ? 'Refining letter...' : 'Apply Refinement'}
           </button>
         </div>
       )}

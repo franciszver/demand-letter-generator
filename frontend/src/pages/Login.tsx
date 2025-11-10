@@ -26,34 +26,42 @@ const Login: React.FC = () => {
     try {
       if (isLogin) {
         await login(email, password);
-        toast.success('Logged in successfully');
+        toast.success('Welcome to Steno Draft');
         navigate('/');
       } else {
         if (!name) {
-          toast.error('Name is required');
+          toast.error('Please provide your full name');
           setLoading(false);
           return;
         }
         await register(email, password, name);
-        toast.success('Registered successfully');
+        toast.success('Account created successfully. Welcome to Steno Draft!');
         navigate('/');
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Authentication failed');
+      toast.error(error.response?.data?.error || 'Unable to sign in. Please check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-steno-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h1 className="text-center text-4xl font-heading font-bold text-steno-navy mb-2">
+            Steno Draft
+          </h1>
+          <p className="text-center text-sm text-steno-teal font-medium mb-4">
+            Generate demand letters in minutes, not hours.
+          </p>
+          <h2 className="mt-6 text-center text-2xl font-heading font-semibold text-steno-charcoal">
             {isLogin ? 'Sign in to your account' : 'Create your account'}
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Demand Letter Generator
+          <p className="mt-2 text-center text-sm text-steno-charcoal-light">
+            {isLogin 
+              ? 'Access your firm\'s demand letter workspace'
+              : 'Join your firm\'s AI-powered demand letter platform'}
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -68,8 +76,8 @@ const Login: React.FC = () => {
                   name="name"
                   type="text"
                   required={!isLogin}
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Full name"
+                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-steno-gray-300 placeholder-steno-gray-400 text-steno-charcoal rounded-t-md focus:outline-none focus:ring-steno-teal focus:border-steno-teal focus:z-10 sm:text-sm"
+                  placeholder="Your full name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
@@ -85,10 +93,10 @@ const Login: React.FC = () => {
                 type="email"
                 autoComplete="email"
                 required
-                className={`appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 ${
+                className={`appearance-none rounded-none relative block w-full px-3 py-2 border border-steno-gray-300 placeholder-steno-gray-400 text-steno-charcoal ${
                   !isLogin ? '' : 'rounded-t-md'
-                } focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
-                placeholder="Email address"
+                } focus:outline-none focus:ring-steno-teal focus:border-steno-teal focus:z-10 sm:text-sm`}
+                placeholder="Your email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -103,8 +111,8 @@ const Login: React.FC = () => {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-steno-gray-300 placeholder-steno-gray-400 text-steno-charcoal rounded-b-md focus:outline-none focus:ring-steno-teal focus:border-steno-teal focus:z-10 sm:text-sm"
+                placeholder="Your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -115,9 +123,9 @@ const Login: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-steno-navy hover:bg-steno-navy-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-steno-teal disabled:opacity-50 transition-colors"
             >
-              {loading ? 'Processing...' : isLogin ? 'Sign in' : 'Register'}
+              {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Create Account'}
             </button>
           </div>
 
@@ -130,10 +138,10 @@ const Login: React.FC = () => {
                 setPassword('');
                 setName('');
               }}
-              className="text-sm text-blue-600 hover:text-blue-500"
+              className="text-sm text-steno-teal hover:text-steno-teal-dark font-medium"
             >
               {isLogin
-                ? "Don't have an account? Register"
+                ? "Don't have an account? Create one"
                 : 'Already have an account? Sign in'}
             </button>
           </div>

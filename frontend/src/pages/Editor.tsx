@@ -78,7 +78,7 @@ const Editor: React.FC = () => {
         setDraft(response.data.data);
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to load draft');
+      toast.error(error.response?.data?.error || 'Unable to load letter draft');
     } finally {
       setLoading(false);
     }
@@ -95,11 +95,11 @@ const Editor: React.FC = () => {
             
             if (doc.status === 'completed') {
               setLoading(false);
-              toast.info('Document processed. Ready to generate letter.');
+              toast.info('Case document processed. Ready to create demand letter draft.');
               return true;
             } else if (doc.status === 'failed') {
               setLoading(false);
-              toast.error('Document processing failed');
+              toast.error('Case document processing was unsuccessful. Please try uploading again.');
               return true;
             }
           }
@@ -131,7 +131,7 @@ const Editor: React.FC = () => {
 
   const handleGenerate = async () => {
     if (!documentId) {
-      toast.error('No document selected');
+      toast.error('Please select a case document to proceed');
       return;
     }
 
@@ -144,11 +144,11 @@ const Editor: React.FC = () => {
 
       if (response.data.success && response.data.data) {
         const newDraftId = response.data.data.draftId;
-        toast.success('Letter generated successfully!');
+        toast.success('Demand letter draft created successfully!');
         navigate(`/editor/${newDraftId}`);
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Generation failed');
+      toast.error(error.response?.data?.error || 'Unable to create demand letter draft. Please try again.');
     } finally {
       setGenerating(false);
     }
@@ -156,7 +156,7 @@ const Editor: React.FC = () => {
 
   const handleRefine = async (instructions: string) => {
     if (!draftId) {
-      toast.error('No draft to refine');
+      toast.error('No letter draft available to refine');
       return;
     }
 
@@ -182,24 +182,29 @@ const Editor: React.FC = () => {
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-steno-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-steno-navy mb-4"></div>
+          <p className="text-steno-charcoal">Loading letter draft...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+    <div className="min-h-screen bg-steno-gray-50">
+      <nav className="bg-white shadow-sm border-b border-steno-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <button
-              onClick={() => navigate('/')}
-              className="text-blue-600 hover:text-blue-800"
-            >
-              ← Back to Home
-            </button>
-            <h1 className="text-xl font-bold">Editor</h1>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/')}
+                className="text-steno-teal hover:text-steno-teal-dark font-medium transition-colors"
+              >
+                ← Back to Home
+              </button>
+              <h1 className="text-xl font-heading font-bold text-steno-navy">Letter Editor</h1>
+            </div>
             {draftId && <ExportButton draftId={draftId} />}
           </div>
         </div>
@@ -207,18 +212,18 @@ const Editor: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!draftId && documentId && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h2 className="text-lg font-semibold mb-2">Generate Demand Letter</h2>
-            <p className="text-gray-600 mb-4">
-              Document uploaded. Select a template (optional) and generate your demand letter.
+          <div className="mb-6 p-6 bg-gradient-to-r from-steno-teal/10 to-steno-teal/5 border border-steno-teal/20 rounded-lg">
+            <h2 className="text-lg font-heading font-semibold mb-2 text-steno-navy">Create Demand Letter Draft</h2>
+            <p className="text-steno-charcoal mb-4">
+              Case document uploaded successfully. Select a firm template (optional) and create your demand letter draft.
             </p>
             <div className="flex gap-4">
               <button
                 onClick={handleGenerate}
                 disabled={generating}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-2 bg-steno-navy text-white rounded-lg hover:bg-steno-navy-dark disabled:opacity-50 font-medium transition-colors"
               >
-                {generating ? 'Generating...' : 'Generate Letter'}
+                {generating ? 'Creating Draft...' : 'Create Demand Letter Draft'}
               </button>
             </div>
           </div>

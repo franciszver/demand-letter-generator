@@ -25,7 +25,7 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onSelectTemplate }) =
         setTemplates(response.data.data || []);
       }
     } catch (error: any) {
-      toast.error('Failed to load templates');
+      toast.error('Unable to load firm templates. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -33,26 +33,26 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onSelectTemplate }) =
 
   const handleCreate = async () => {
     if (!formData.name || !formData.content) {
-      toast.error('Name and content are required');
+      toast.error('Template name and content are required');
       return;
     }
 
     try {
       const response = await api.post<{ success: boolean; data: Template }>('/templates', formData);
       if (response.data.success) {
-        toast.success('Template created successfully');
+        toast.success('Firm template created successfully');
         setShowCreateForm(false);
         setFormData({ name: '', content: '' });
         loadTemplates();
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to create template');
+      toast.error(error.response?.data?.error || 'Unable to create template. Please try again.');
     }
   };
 
   const handleUpdate = async () => {
     if (!editingTemplate || !formData.name || !formData.content) {
-      toast.error('Name and content are required');
+      toast.error('Template name and content are required');
       return;
     }
 
@@ -62,27 +62,27 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onSelectTemplate }) =
         formData
       );
       if (response.data.success) {
-        toast.success('Template updated successfully');
+        toast.success('Firm template updated successfully');
         setEditingTemplate(null);
         setFormData({ name: '', content: '' });
         loadTemplates();
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to update template');
+      toast.error(error.response?.data?.error || 'Unable to update template. Please try again.');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
+    if (!confirm('Are you sure you want to delete this firm template? This action cannot be undone.')) return;
 
     try {
       const response = await api.delete(`/templates/${id}`);
       if (response.data.success) {
-        toast.success('Template deleted successfully');
+        toast.success('Firm template deleted successfully');
         loadTemplates();
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to delete template');
+      toast.error(error.response?.data?.error || 'Unable to delete template. Please try again.');
     }
   };
 
@@ -99,20 +99,28 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onSelectTemplate }) =
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading templates...</div>;
+    return (
+      <div className="text-center py-8">
+        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-steno-navy mb-2"></div>
+        <p className="text-steno-charcoal">Loading firm templates...</p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Templates</h2>
+        <div>
+          <h2 className="text-2xl font-heading font-semibold text-steno-navy">Firm Templates</h2>
+          <p className="text-sm text-steno-charcoal-light mt-1">Create and manage reusable letter templates for your firm</p>
+        </div>
         <button
           onClick={() => {
             setShowCreateForm(true);
             setEditingTemplate(null);
             setFormData({ name: '', content: '' });
           }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-4 py-2 bg-steno-navy text-white rounded-lg hover:bg-steno-navy-dark font-medium transition-colors"
         >
           Create Template
         </button>
@@ -120,36 +128,36 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onSelectTemplate }) =
 
       {/* Create/Edit Form */}
       {(showCreateForm || editingTemplate) && (
-        <div className="border border-gray-300 rounded-lg p-4 bg-white">
-          <h3 className="text-lg font-semibold mb-4">
-            {editingTemplate ? 'Edit Template' : 'Create Template'}
+        <div className="border border-steno-gray-300 rounded-lg p-6 bg-white shadow-sm">
+          <h3 className="text-lg font-heading font-semibold mb-4 text-steno-navy">
+            {editingTemplate ? 'Edit Firm Template' : 'Create Firm Template'}
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-steno-charcoal mb-1">
                 Template Name
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded-lg"
-                placeholder="e.g., Standard Demand Letter"
+                className="w-full p-2 border border-steno-gray-300 rounded-lg focus:ring-steno-teal focus:border-steno-teal"
+                placeholder="e.g., Standard Demand Letter, Personal Injury Template"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-steno-charcoal mb-1">
                 Template Content (use {'{{variable_name}}'} for placeholders)
               </label>
               <textarea
                 value={formData.content}
                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded-lg"
+                className="w-full p-2 border border-steno-gray-300 rounded-lg focus:ring-steno-teal focus:border-steno-teal"
                 rows={10}
-                placeholder="Enter template content with variables like {{client_name}}, {{date}}, etc."
+                placeholder="Enter template content with variables like {{client_name}}, {{date}}, {{amount}}, etc."
               />
               {formData.content && (
-                <div className="mt-2 text-sm text-gray-600">
+                <div className="mt-2 text-sm text-steno-teal-dark">
                   Variables found: {extractVariables(formData.content).join(', ') || 'None'}
                 </div>
               )}
@@ -157,9 +165,9 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onSelectTemplate }) =
             <div className="flex gap-2">
               <button
                 onClick={editingTemplate ? handleUpdate : handleCreate}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-steno-navy text-white rounded-lg hover:bg-steno-navy-dark font-medium transition-colors"
               >
-                {editingTemplate ? 'Update' : 'Create'}
+                {editingTemplate ? 'Update Template' : 'Create Template'}
               </button>
               <button
                 onClick={() => {
@@ -167,7 +175,7 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onSelectTemplate }) =
                   setEditingTemplate(null);
                   setFormData({ name: '', content: '' });
                 }}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                className="px-4 py-2 bg-steno-gray-300 text-steno-charcoal rounded-lg hover:bg-steno-gray-400 font-medium transition-colors"
               >
                 Cancel
               </button>
@@ -181,22 +189,22 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onSelectTemplate }) =
         {templates.map((template) => (
           <div
             key={template.id}
-            className="border border-gray-300 rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
+            className="border border-steno-gray-300 rounded-lg p-4 bg-white hover:shadow-lg transition-all hover:border-steno-teal"
           >
-            <h3 className="font-semibold text-lg mb-2">{template.name}</h3>
-            <p className="text-sm text-gray-600 mb-2 line-clamp-3">
+            <h3 className="font-heading font-semibold text-lg mb-2 text-steno-navy">{template.name}</h3>
+            <p className="text-sm text-steno-charcoal-light mb-2 line-clamp-3">
               {template.content.substring(0, 150)}...
             </p>
-            <div className="text-xs text-gray-500 mb-3">
+            <div className="text-xs text-steno-gray-500 mb-3">
               Variables: {template.variables.join(', ') || 'None'}
             </div>
             <div className="flex gap-2">
               {onSelectTemplate && (
                 <button
                   onClick={() => onSelectTemplate(template.id)}
-                  className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                  className="px-3 py-1 bg-steno-teal text-white text-sm rounded hover:bg-steno-teal-dark font-medium transition-colors"
                 >
-                  Use
+                  Use Template
                 </button>
               )}
               <button
@@ -205,13 +213,13 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onSelectTemplate }) =
                   setFormData({ name: template.name, content: template.content });
                   setShowCreateForm(false);
                 }}
-                className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                className="px-3 py-1 bg-steno-navy text-white text-sm rounded hover:bg-steno-navy-dark font-medium transition-colors"
               >
                 Edit
               </button>
               <button
                 onClick={() => handleDelete(template.id)}
-                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 font-medium transition-colors"
               >
                 Delete
               </button>
@@ -221,8 +229,12 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ onSelectTemplate }) =
       </div>
 
       {templates.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No templates yet. Create your first template to get started.
+        <div className="text-center py-12">
+          <svg className="mx-auto h-16 w-16 text-steno-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 className="text-lg font-heading font-semibold text-steno-charcoal mb-2">No firm templates yet</h3>
+          <p className="text-steno-charcoal-light">Create your first template to standardize demand letters across your firm.</p>
         </div>
       )}
     </div>

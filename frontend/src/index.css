@@ -2,17 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+:root {
+  /* Steno Brand Colors */
+  --steno-navy: #1e3a5f;
+  --steno-navy-dark: #152a47;
+  --steno-navy-light: #2d4a6f;
+  --steno-teal: #0d9488;
+  --steno-teal-dark: #0f766e;
+  --steno-teal-light: #14b8a6;
+  --steno-charcoal: #2d3748;
+  --steno-charcoal-dark: #1a202c;
+  --steno-charcoal-light: #4a5568;
+  --steno-gold: #d4af37;
+  --steno-gold-dark: #b8941f;
+  --steno-gold-light: #e5c558;
+  --steno-silver: #c0c0c0;
+  --steno-white: #ffffff;
+  --steno-gray-50: #f9fafb;
+  --steno-gray-100: #f3f4f6;
+  --steno-gray-200: #e5e7eb;
+  --steno-gray-300: #d1d5db;
+  --steno-gray-400: #9ca3af;
+  --steno-gray-500: #6b7280;
+  --steno-gray-600: #4b5563;
+  --steno-gray-700: #374151;
+  --steno-gray-800: #1f2937;
+  --steno-gray-900: #111827;
+  
+  /* Typography */
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+@layer base {
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: var(--steno-charcoal);
+    background-color: var(--steno-gray-50);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--steno-navy);
+  }
+
+  code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+      monospace;
+  }
 }
 
