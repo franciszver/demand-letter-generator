@@ -1,0 +1,83 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.production
+.env.*
+*/.env
+*/.env.local
+*/.env.production
+*.env
+deployment.env
+secrets.json
+
+# Build outputs
+dist/
+build/
+*/dist/
+*/build/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# AWS
+.aws-sam/
+samconfig.toml
+.aws-sam-build/
+aws-sam-cli-app-templates/
+
+# Testing
+coverage/
+.nyc_output/
+*.coverage
+*.lcov
+
+# Debugging and temporary files
+_debugging/
+*.har
+*.har.har
+tmp/
+temp/
+*.tmp
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Certificates and keys (if any)
+*.pem
+*.key
+*.crt
+*.cert
+!*.example.key
+!*.example.crt
+
+# Backup files
+*.bak
+*.backup
+*~

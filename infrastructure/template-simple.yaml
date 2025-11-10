@@ -1,0 +1,207 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Demand Letter Generator - Simple Express Lambda Deployment
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+  
+  OpenRouterApiKey:
+    Type: String
+    NoEcho: true
+    Description: OpenRouter API Key
+  
+  DatabaseHost:
+    Type: String
+    Description: Database host (RDS endpoint or localhost for testing)
+  
+  DatabasePort:
+    Type: Number
+    Default: 5432
+    Description: Database port
+  
+  DatabaseName:
+    Type: String
+    Default: demand_letter_generator
+    Description: Database name
+  
+  DatabaseUser:
+    Type: String
+    Description: Database user
+  
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+    Description: Database password
+  
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: JWT secret key
+  
+  CorsOrigin:
+    Type: String
+    Default: '*'
+    Description: CORS origin
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Runtime: nodejs18.x
+    Environment:
+      Variables:
+        NODE_ENV: !Ref Environment
+        DB_HOST: !Ref DatabaseHost
+        DB_PORT: !Ref DatabasePort
+        DB_NAME: !Ref DatabaseName
+        DB_USER: !Ref DatabaseUser
+        DB_PASSWORD: !Ref DatabasePassword
+        JWT_SECRET: !Ref JwtSecret
+        S3_BUCKET_DOCUMENTS: !Ref DocumentsBucket
+        S3_BUCKET_PROCESSED: !Ref ProcessedBucket
+        S3_BUCKET_EXPORTS: !Ref ExportsBucket
+        OPENROUTER_API_KEY: !Ref OpenRouterApiKey
+        OPENROUTER_MODEL: gpt-4o
+        CORS_ORIGIN: !Ref CorsOrigin
+        AWS_REGION: !Ref AWS::Region
+
+Resources:
+  # S3 Buckets
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'demand-letter-generator-${Environment}-documents'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 90
+
+  ProcessedBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'demand-letter-generator-${Environment}-processed'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  ExportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'demand-letter-generator-${Environment}-exports'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldExports
+            Status: Enabled
+            ExpirationInDays: 30
+
+  # IAM Role for Lambda Functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub '${DocumentsBucket}/*'
+                  - !Sub '${DocumentsBucket}'
+                  - !Sub '${ProcessedBucket}/*'
+                  - !Sub '${ProcessedBucket}'
+                  - !Sub '${ExportsBucket}/*'
+                  - !Sub '${ExportsBucket}'
+
+  # API Gateway
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS,PATCH'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: !Ref CorsOrigin
+        MaxAge: "'600'"
+
+  # Single Express Lambda Function
+  ApiHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend
+      Handler: dist/lambda.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /{proxy+}
+            Method: ANY
+        RootApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiUrl'
+  
+  DocumentsBucketName:
+    Description: S3 bucket for uploaded documents
+    Value: !Ref DocumentsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-DocumentsBucket'
+  
+  ProcessedBucketName:
+    Description: S3 bucket for processed documents
+    Value: !Ref ProcessedBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-ProcessedBucket'
+  
+  ExportsBucketName:
+    Description: S3 bucket for exports
+    Value: !Ref ExportsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-ExportsBucket'
+
