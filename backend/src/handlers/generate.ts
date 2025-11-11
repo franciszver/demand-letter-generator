@@ -5,6 +5,7 @@ import { DraftLetterModel } from '../models/DraftLetter';
 import { AIGenerator } from '../services/ai-generator';
 import { DocumentProcessor } from '../services/document-processor';
 import { uploadToS3 } from '../config/s3';
+import { AnalyticsService } from '../services/analytics';
 import { GenerateRequest } from '../../../shared/types';
 
 const PROCESSED_BUCKET = process.env.S3_BUCKET_PROCESSED || 'demand-letter-generator-dev-processed';
@@ -58,6 +59,16 @@ export const generateHandler = async (req: AuthRequest, res: Response): Promise<
       content: result.content,
       s3Key: letterS3Key,
       status: 'generated',
+    });
+
+    // Track analytics
+    await AnalyticsService.trackLetterGenerated(userId, draftLetter.id, templateId);
+
+    // Trigger webhooks
+    await WebhookService.triggerWebhooks('letter.created', {
+      draftId: draftLetter.id,
+      userId,
+      title: draftLetter.title,
     });
 
     res.json({

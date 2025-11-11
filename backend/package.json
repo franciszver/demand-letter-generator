@@ -10,7 +10,9 @@
     "migrate": "knex migrate:latest",
     "migrate:rollback": "knex migrate:rollback",
     "migrate:make": "knex migrate:make",
-    "test": "jest"
+    "test": "jest",
+    "seed:demo": "tsx scripts/seed-demo-data.ts",
+    "seed:analytics": "tsx scripts/generate-analytics-history.ts"
   },
   "dependencies": {
     "express": "^4.18.2",

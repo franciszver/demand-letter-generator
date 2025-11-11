@@ -32,6 +32,12 @@ export class DraftLetterModel {
     return drafts.map(this.mapToDraftLetter);
   }
 
+  static async findAll(): Promise<DraftLetter[]> {
+    const drafts = await db('draft_letters')
+      .orderBy('created_at', 'desc');
+    return drafts.map(this.mapToDraftLetter);
+  }
+
   static async update(id: string, updates: Partial<DraftLetter>): Promise<DraftLetter | null> {
     const existing = await this.findById(id);
     if (!existing) return null;
@@ -43,6 +49,24 @@ export class DraftLetterModel {
         ...(updates.content && { content_summary: updates.content.substring(0, 500) }),
         ...(updates.s3Key && { s3_key: updates.s3Key }),
         ...(updates.status && { status: updates.status }),
+        version: existing.version + 1,
+        updated_at: new Date(),
+      })
+      .returning('*');
+    
+    if (!draft) return null;
+    return this.mapToDraftLetter(draft);
+  }
+
+  static async updateContent(id: string, content: string, s3Key: string): Promise<DraftLetter | null> {
+    const existing = await this.findById(id);
+    if (!existing) return null;
+
+    const [draft] = await db('draft_letters')
+      .where({ id })
+      .update({
+        content_summary: content.substring(0, 500),
+        s3_key: s3Key,
         version: existing.version + 1,
         updated_at: new Date(),
       })

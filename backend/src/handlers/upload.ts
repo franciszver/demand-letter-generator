@@ -5,6 +5,7 @@ import { AuthRequest } from '../middleware/auth';
 import { DocumentModel } from '../models/Document';
 import { DocumentProcessor } from '../services/document-processor';
 import { uploadToS3 } from '../config/s3';
+import { AnalyticsService } from '../services/analytics';
 
 const DOCUMENTS_BUCKET = process.env.S3_BUCKET_DOCUMENTS || 'demand-letter-generator-dev-documents';
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || '52428800'); // 50MB
@@ -65,6 +66,9 @@ export const uploadHandler = async (req: AuthRequest, res: Response): Promise<vo
         s3Key,
         status: 'processing',
       });
+
+      // Track analytics
+      await AnalyticsService.trackDocumentUploaded(userId, document.id, file.mimetype, file.size);
 
       // Process document asynchronously
       DocumentProcessor.processDocument(file.buffer, file.mimetype, s3Key)

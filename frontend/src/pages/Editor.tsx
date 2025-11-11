@@ -3,10 +3,11 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import LetterEditor from '../components/LetterEditor';
 import ExportButton from '../components/ExportButton';
+import VersionHistory from '../components/VersionHistory';
 import { api } from '../services/api';
 import { wsService } from '../services/websocket';
 import { toast } from 'react-toastify';
-import { DraftLetter, Document } from '../../../shared/types';
+import { DraftLetter, Document, Template } from '../../../shared/types';
 
 const Editor: React.FC = () => {
   const { draftId } = useParams<{ draftId?: string }>();
@@ -20,6 +21,8 @@ const Editor: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>();
   const [activeUsers, setActiveUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -43,9 +46,25 @@ const Editor: React.FC = () => {
       } else if (documentId) {
         // Wait for document to be processed, then generate
         checkDocumentStatus(documentId);
+        // Load templates for selection
+        loadTemplates();
       }
     }
   }, [draftId, documentId, isAuthenticated]);
+
+  const loadTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const response = await api.get<{ success: boolean; data: Template[] }>('/templates');
+      if (response.data.success) {
+        setTemplates(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load templates:', error);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
 
   useEffect(() => {
     if (draftId) {
@@ -176,8 +195,16 @@ const Editor: React.FC = () => {
   };
 
   const handleSave = async (content: string) => {
-    // Auto-save functionality
-    // This could be implemented with a PATCH endpoint
+    if (!draftId) return;
+
+    try {
+      await api.patch(`/drafts/${draftId}`, { content });
+      // Success is handled by LetterEditor's lastSaved state
+    } catch (error: any) {
+      console.error('Auto-save failed:', error);
+      // Don't show error toast for auto-save failures to avoid annoying users
+      // The error will be logged for debugging
+    }
   };
 
   if (loading || authLoading) {
@@ -217,6 +244,56 @@ const Editor: React.FC = () => {
             <p className="text-steno-charcoal mb-4">
               Case document uploaded successfully. Select a firm template (optional) and create your demand letter draft.
             </p>
+            
+            {/* Template Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-steno-charcoal mb-2">
+                Select Firm Template (Optional)
+              </label>
+              {loadingTemplates ? (
+                <div className="text-sm text-steno-charcoal-light">Loading templates...</div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      id="no-template"
+                      name="template"
+                      checked={!selectedTemplateId}
+                      onChange={() => setSelectedTemplateId(undefined)}
+                      className="text-steno-teal focus:ring-steno-teal"
+                    />
+                    <label htmlFor="no-template" className="text-sm text-steno-charcoal cursor-pointer">
+                      No template (AI will generate from scratch)
+                    </label>
+                  </div>
+                  {templates.map((template) => (
+                    <div key={template.id} className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        id={`template-${template.id}`}
+                        name="template"
+                        checked={selectedTemplateId === template.id}
+                        onChange={() => setSelectedTemplateId(template.id)}
+                        className="text-steno-teal focus:ring-steno-teal"
+                      />
+                      <label htmlFor={`template-${template.id}`} className="text-sm text-steno-charcoal cursor-pointer flex-1">
+                        <span className="font-medium">{template.name}</span>
+                        {template.variables && template.variables.length > 0 && (
+                          <span className="text-steno-charcoal-light ml-2">
+                            ({template.variables.length} variable{template.variables.length !== 1 ? 's' : ''})
+                          </span>
+                        )}
+                      </label>
+                    </div>
+                  ))}
+                  {templates.length === 0 && (
+                    <p className="text-sm text-steno-charcoal-light italic">No firm templates available. Create templates on the home page.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-4">
               <button
                 onClick={handleGenerate}
@@ -230,13 +307,22 @@ const Editor: React.FC = () => {
         )}
 
         {draftId && (
-          <LetterEditor
-            draftId={draftId}
-            initialContent={draft?.content}
-            onSave={handleSave}
-            onRefine={handleRefine}
-            activeUsers={activeUsers}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <LetterEditor
+                draftId={draftId}
+                initialContent={draft?.content}
+                onSave={handleSave}
+                onRefine={handleRefine}
+                activeUsers={activeUsers}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-sm border border-steno-gray-300 p-4">
+                <VersionHistory draftId={draftId} />
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

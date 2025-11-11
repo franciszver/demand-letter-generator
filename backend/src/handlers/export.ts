@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import { DraftLetterModel } from '../models/DraftLetter';
 import { WordExporter } from '../services/word-exporter';
 import { DocumentProcessor } from '../services/document-processor';
+import { AnalyticsService } from '../services/analytics';
 
 export const exportHandler = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -40,6 +41,9 @@ export const exportHandler = async (req: AuthRequest, res: Response): Promise<vo
     // Export to Word
     const filename = draftLetter.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const result = await WordExporter.exportToWord(content, draftLetter.title, filename);
+
+    // Track analytics
+    await AnalyticsService.trackLetterExported(userId, draftId);
 
     res.json({
       success: true,

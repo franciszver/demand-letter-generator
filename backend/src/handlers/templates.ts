@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { TemplateModel } from '../models/Template';
+import { AnalyticsService } from '../services/analytics';
 import { Template } from '../../../shared/types';
 
 export const listTemplatesHandler = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -33,6 +34,9 @@ export const createTemplateHandler = async (req: AuthRequest, res: Response): Pr
       content,
       variables: extractedVariables,
     });
+
+    // Track analytics
+    await AnalyticsService.trackTemplateCreated(req.user!.id, template.id);
 
     res.status(201).json({ success: true, data: template });
   } catch (error) {
@@ -71,6 +75,9 @@ export const updateTemplateHandler = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
+    // Track analytics
+    await AnalyticsService.trackTemplateUpdated(req.user!.id, id);
+
     res.json({ success: true, data: template });
   } catch (error) {
     console.error('Update template error:', error);
@@ -96,6 +103,9 @@ export const deleteTemplateHandler = async (req: AuthRequest, res: Response): Pr
       res.status(404).json({ success: false, error: 'Template not found' });
       return;
     }
+
+    // Track analytics
+    await AnalyticsService.trackTemplateDeleted(req.user!.id, id);
 
     res.json({ success: true, message: 'Template deleted successfully' });
   } catch (error) {
