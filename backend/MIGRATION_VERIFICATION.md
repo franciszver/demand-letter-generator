@@ -157,3 +157,4 @@ To verify migrations are working correctly:
 3. Check `knex_migrations` table to verify all migrations are recorded
 4. Test rollback with `npm run migrate:rollback` (if needed)
 
+

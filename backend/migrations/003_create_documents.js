@@ -27,3 +27,4 @@ exports.down = async function(knex) {
   return knex.schema.dropTable('documents');
 };
 
+

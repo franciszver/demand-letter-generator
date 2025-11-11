@@ -201,3 +201,4 @@ Write-Host "  3. Verify cleanup completion using verification commands" -Foregro
 Write-Host "  4. Check AWS Console to confirm all resources are removed" -ForegroundColor White
 Write-Host ""
 
+

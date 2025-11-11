@@ -291,3 +291,4 @@ Enhance `/health` endpoint to check:
 4. **Enhance health check endpoint** with resource status
 5. **Add integration tests** for resource access
 
+
