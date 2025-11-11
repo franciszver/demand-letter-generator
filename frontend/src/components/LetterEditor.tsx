@@ -32,6 +32,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [isRefining, setIsRefining] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
+  // Update editor content when initialContent changes (e.g., when draft loads)
+  useEffect(() => {
+    if (initialContent) {
+      const newContent = ContentState.createFromText(initialContent);
+      setEditorState(EditorState.createWithContent(newContent));
+    }
+  }, [initialContent]);
+
   // Join collaboration session if draftId provided
   useEffect(() => {
     if (draftId) {

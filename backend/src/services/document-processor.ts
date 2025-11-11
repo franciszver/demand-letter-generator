@@ -39,12 +39,17 @@ export class DocumentProcessor {
           extractedText = await this.extractFromDOCX(fileBuffer);
           break;
 
+        case 'text/plain':
+        case 'txt':
+          extractedText = await this.extractFromText(fileBuffer);
+          break;
+
         case 'image/jpeg':
         case 'image/jpg':
         case 'image/png':
         case 'image/gif':
         case 'image/webp':
-          extractedText = await this.extractFromImage(fileBuffer);
+          extractedText = await this.extractFromImage(fileBuffer, fileType);
           break;
 
         default:
@@ -91,9 +96,20 @@ export class DocumentProcessor {
   }
 
   /**
+   * Extract text from plain text file
+   */
+  private static async extractFromText(buffer: Buffer): Promise<string> {
+    try {
+      return buffer.toString('utf-8');
+    } catch (error) {
+      throw new Error(`Text extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
    * Extract text from image using OpenAI Vision API via OpenRouter
    */
-  private static async extractFromImage(buffer: Buffer): Promise<string> {
+  private static async extractFromImage(buffer: Buffer, fileType: string): Promise<string> {
     if (!OPENROUTER_API_KEY) {
       throw new Error('OpenRouter API key not configured');
     }
@@ -101,6 +117,21 @@ export class DocumentProcessor {
     try {
       // Convert buffer to base64
       const base64Image = buffer.toString('base64');
+      
+      // Map file type to correct MIME type for data URL
+      // Normalize fileType to lowercase for comparison
+      const normalizedType = fileType.toLowerCase();
+      let mimeType = 'image/jpeg'; // default
+      
+      if (normalizedType.includes('png')) {
+        mimeType = 'image/png';
+      } else if (normalizedType.includes('gif')) {
+        mimeType = 'image/gif';
+      } else if (normalizedType.includes('webp')) {
+        mimeType = 'image/webp';
+      } else if (normalizedType.includes('jpeg') || normalizedType.includes('jpg')) {
+        mimeType = 'image/jpeg';
+      }
 
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
@@ -117,7 +148,7 @@ export class DocumentProcessor {
                 {
                   type: 'image_url',
                   image_url: {
-                    url: `data:image/jpeg;base64,${base64Image}`,
+                    url: `data:${mimeType};base64,${base64Image}`,
                   },
                 },
               ],
@@ -143,7 +174,10 @@ export class DocumentProcessor {
       return extractedText;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(`Image OCR failed: ${error.response?.data?.error?.message || error.message}`);
+        const errorMessage = error.response?.data?.error?.message || error.message;
+        const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : '';
+        console.error('Image OCR API error:', errorMessage, errorDetails);
+        throw new Error(`Image OCR failed: ${errorMessage}`);
       }
       throw new Error(`Image OCR failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

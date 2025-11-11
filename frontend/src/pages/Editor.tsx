@@ -13,7 +13,7 @@ const Editor: React.FC = () => {
   const [searchParams] = useSearchParams();
   const documentId = searchParams.get('documentId');
   const navigate = useNavigate();
-  const { isAuthenticated, token, loading: authLoading } = useAuth();
+  const { isAuthenticated, token, loading: authLoading, user } = useAuth();
   const [draft, setDraft] = useState<DraftLetter | null>(null);
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,10 +39,20 @@ const Editor: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated) {
       if (draftId) {
-        loadDraft(draftId);
+        // Only load if we don't already have this draft, or if draft content is missing
+        if (!draft || draft.id !== draftId || !draft.content) {
+          setLoading(true);
+          loadDraft(draftId);
+        } else {
+          // We already have the draft with content, just ensure loading is false
+          setLoading(false);
+        }
       } else if (documentId) {
         // Wait for document to be processed, then generate
+        setLoading(true);
         checkDocumentStatus(documentId);
+      } else {
+        setLoading(false);
       }
     }
   }, [draftId, documentId, isAuthenticated]);
@@ -95,7 +105,6 @@ const Editor: React.FC = () => {
             
             if (doc.status === 'completed') {
               setLoading(false);
-              toast.info('Case document processed. Ready to create demand letter draft.');
               return true;
             } else if (doc.status === 'failed') {
               setLoading(false);
@@ -144,6 +153,25 @@ const Editor: React.FC = () => {
 
       if (response.data.success && response.data.data) {
         const newDraftId = response.data.data.draftId;
+        const draftContent = response.data.data.content;
+        
+        // Set the draft immediately with the content from the response
+        // This ensures the editor shows content right away without waiting for a reload
+        setDraft({
+          id: newDraftId,
+          content: draftContent,
+          userId: user?.id || '',
+          documentId: documentId!,
+          templateId: selectedTemplateId,
+          title: `Demand Letter - ${document?.originalName || 'Untitled'}`,
+          s3Key: '', // Will be loaded by loadDraft
+          version: 1,
+          status: 'generated',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as DraftLetter);
+        
+        setLoading(false); // Stop loading since we have the content
         toast.success('Demand letter draft created successfully!');
         navigate(`/editor/${newDraftId}`);
       }

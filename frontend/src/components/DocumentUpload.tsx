@@ -20,6 +20,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
     const allowedTypes = [
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
       'image/jpeg',
       'image/jpg',
       'image/png',
@@ -28,7 +29,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      toast.error('This document format isn\'t supported. Please upload PDF, Word, or image files.');
+      toast.error('This document format isn\'t supported. Please upload PDF, Word, text, or image files.');
       return;
     }
 
@@ -78,6 +79,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
     accept: {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'text/plain': ['.txt'],
       'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'],
     },
     maxFiles: 1,
@@ -126,7 +128,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
                 : 'Drag & drop a case document here, or click to select'}
             </p>
             <p className="text-sm text-steno-charcoal-light">
-              PDF, Word (DOCX), or images (max 50MB)
+              PDF, Word (DOCX), text (TXT), or images (max 50MB)
             </p>
           </div>
         )}

@@ -19,6 +19,7 @@ const upload = multer({
     const allowedTypes = [
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
       'image/jpeg',
       'image/jpg',
       'image/png',
@@ -69,13 +70,19 @@ export const uploadHandler = async (req: AuthRequest, res: Response): Promise<vo
       // Process document asynchronously
       DocumentProcessor.processDocument(file.buffer, file.mimetype, s3Key)
         .then(async (processed) => {
+          console.log(`Document ${document.id} processed successfully. Extracted ${processed.metadata.wordCount} words.`);
           await DocumentModel.update(document.id, {
             extractedText: processed.text.substring(0, 1000), // Store summary
             status: 'completed',
           });
         })
         .catch(async (error) => {
-          console.error('Document processing error:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          const errorStack = error instanceof Error ? error.stack : undefined;
+          console.error(`Document processing error for ${document.id} (${file.mimetype}):`, errorMessage);
+          if (errorStack) {
+            console.error('Error stack:', errorStack);
+          }
           await DocumentModel.update(document.id, {
             status: 'failed',
           });

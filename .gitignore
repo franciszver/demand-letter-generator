@@ -64,6 +64,9 @@ tmp/
 temp/
 *.tmp
 
+# Test documents
+test_docs/
+
 # Database
 *.db
 *.sqlite
