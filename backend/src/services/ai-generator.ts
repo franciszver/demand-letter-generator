@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { DocumentProcessor } from './document-processor';
 import { TemplateModel } from '../models/Template';
-import { PromptModel } from '../models/Prompt';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'gpt-4o';
@@ -23,20 +22,12 @@ export class AIGenerator {
   /**
    * Analyze document and extract key information
    */
-  static async analyzeDocument(documentText: string, promptId?: string): Promise<DocumentAnalysis> {
+  static async analyzeDocument(documentText: string): Promise<DocumentAnalysis> {
     if (!OPENROUTER_API_KEY) {
       throw new Error('OpenRouter API key not configured');
     }
 
-    // Get custom prompt or use default
-    let promptContent: string;
-    if (promptId) {
-      const customPrompt = await PromptModel.findById(promptId);
-      if (customPrompt && customPrompt.type === 'analysis') {
-        promptContent = customPrompt.content.replace('{{document_text}}', documentText.substring(0, 8000));
-      } else {
-        // Fallback to default
-        promptContent = `Analyze the following legal documents and extract key information. Return a JSON object with the following structure:
+    const prompt = `Analyze the following legal documents and extract key information. Return a JSON object with the following structure:
 {
   "facts": ["fact1", "fact2", ...],
   "parties": ["party1", "party2", ...],
@@ -47,26 +38,6 @@ export class AIGenerator {
 
 Documents:
 ${documentText.substring(0, 8000)}`;
-      }
-    } else {
-      // Use default prompt
-      const defaultPrompt = await PromptModel.findDefault('analysis');
-      if (defaultPrompt) {
-        promptContent = defaultPrompt.content.replace('{{document_text}}', documentText.substring(0, 8000));
-      } else {
-        promptContent = `Analyze the following legal documents and extract key information. Return a JSON object with the following structure:
-{
-  "facts": ["fact1", "fact2", ...],
-  "parties": ["party1", "party2", ...],
-  "damages": ["damage1", "damage2", ...],
-  "dates": ["date1", "date2", ...],
-  "legalBasis": ["basis1", "basis2", ...]
-}
-
-Documents:
-${documentText.substring(0, 8000)}`;
-      }
-    }
 
     try {
       const response = await axios.post(
@@ -80,7 +51,7 @@ ${documentText.substring(0, 8000)}`;
             },
             {
               role: 'user',
-              content: promptContent,
+              content: prompt,
             },
           ],
           response_format: { type: 'json_object' },
@@ -116,8 +87,7 @@ ${documentText.substring(0, 8000)}`;
    */
   static async generateLetter(
     analysis: DocumentAnalysis,
-    templateId?: string,
-    promptId?: string
+    templateId?: string
   ): Promise<LetterGenerationResult> {
     if (!OPENROUTER_API_KEY) {
       throw new Error('OpenRouter API key not configured');
@@ -131,21 +101,7 @@ ${documentText.substring(0, 8000)}`;
       }
     }
 
-    // Get custom prompt or use default
-    let promptContent: string;
-    if (promptId) {
-      const customPrompt = await PromptModel.findById(promptId);
-      if (customPrompt && customPrompt.type === 'generation') {
-        promptContent = customPrompt.content
-          .replace('{{facts}}', analysis.facts.join('\n'))
-          .replace('{{parties}}', analysis.parties.join('\n'))
-          .replace('{{damages}}', analysis.damages.join('\n'))
-          .replace('{{dates}}', analysis.dates.join('\n'))
-          .replace('{{legal_basis}}', analysis.legalBasis.join('\n'))
-          .replace('{{template_content}}', templateContent || '');
-      } else {
-        // Fallback to default
-        promptContent = `Generate a professional demand letter based on the following information:
+    const prompt = `Generate a professional demand letter based on the following information:
 
 FACTS:
 ${analysis.facts.join('\n')}
@@ -176,52 +132,6 @@ Generate a professional, firm demand letter that:
 ${templateContent ? 'Use the template structure provided, replacing variables like {{client_name}}, {{date}}, etc. with appropriate values from the analysis.' : ''}
 
 Return only the letter content, no additional commentary.`;
-      }
-    } else {
-      // Use default prompt
-      const defaultPrompt = await PromptModel.findDefault('generation');
-      if (defaultPrompt) {
-        promptContent = defaultPrompt.content
-          .replace('{{facts}}', analysis.facts.join('\n'))
-          .replace('{{parties}}', analysis.parties.join('\n'))
-          .replace('{{damages}}', analysis.damages.join('\n'))
-          .replace('{{dates}}', analysis.dates.join('\n'))
-          .replace('{{legal_basis}}', analysis.legalBasis.join('\n'))
-          .replace('{{template_content}}', templateContent || '');
-      } else {
-        promptContent = `Generate a professional demand letter based on the following information:
-
-FACTS:
-${analysis.facts.join('\n')}
-
-PARTIES INVOLVED:
-${analysis.parties.join('\n')}
-
-DAMAGES/CLAIMS:
-${analysis.damages.join('\n')}
-
-RELEVANT DATES:
-${analysis.dates.join('\n')}
-
-LEGAL BASIS:
-${analysis.legalBasis.join('\n')}
-
-${templateContent ? `\nTEMPLATE STRUCTURE:\n${templateContent}` : ''}
-
-Generate a professional, firm demand letter that:
-1. Clearly states all relevant facts
-2. Identifies all parties involved
-3. Details the damages or claims
-4. Provides legal basis for the demand
-5. Includes specific demands and a reasonable deadline (typically 14-30 days)
-6. Maintains a professional and firm tone
-7. Is suitable for legal correspondence
-
-${templateContent ? 'Use the template structure provided, replacing variables like {{client_name}}, {{date}}, etc. with appropriate values from the analysis.' : ''}
-
-Return only the letter content, no additional commentary.`;
-      }
-    }
 
     try {
       const response = await axios.post(
@@ -235,7 +145,7 @@ Return only the letter content, no additional commentary.`;
             },
             {
               role: 'user',
-              content: promptContent,
+              content: prompt,
             },
           ],
           max_tokens: 4000,

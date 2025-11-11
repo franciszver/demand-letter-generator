@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { UserModel } from '../models/User';
-import { AnalyticsService } from '../services/analytics';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -26,15 +25,11 @@ export const registerHandler = async (req: Request, res: Response): Promise<void
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Security: Prevent self-registration as admin
-    // Admin users must be created by existing admins via admin panel
-    const userRole = role === 'admin' ? 'attorney' : (role || 'attorney');
-
     // Create user
     const user = await UserModel.create({
       email,
       name,
-      role: userRole,
+      role: role || 'attorney',
       passwordHash,
     });
 
@@ -44,9 +39,6 @@ export const registerHandler = async (req: Request, res: Response): Promise<void
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
-
-    // Track analytics
-    await AnalyticsService.trackUserRegistered(user.id);
 
     res.status(201).json({
       success: true,
@@ -98,9 +90,6 @@ export const loginHandler = async (req: Request, res: Response): Promise<void> =
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
-
-    // Track analytics
-    await AnalyticsService.trackUserLoggedIn(user.id);
 
     res.json({
       success: true,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import DocumentUpload from '../components/DocumentUpload';
 import TemplateManager from '../components/TemplateManager';
@@ -63,24 +63,16 @@ const Home: React.FC = () => {
               <h1 className="text-2xl font-heading font-bold text-steno-navy">Steno Draft</h1>
               <span className="text-xs text-steno-teal font-medium hidden sm:inline">Generate demand letters in minutes, not hours.</span>
             </div>
-            <div className="flex items-center gap-4">
-              <Link
-                to="/settings"
-                className="text-steno-charcoal hover:text-steno-navy font-medium transition-colors"
-              >
-                Settings
-              </Link>
-              <button
-                onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('user');
-                  window.location.href = '/login';
-                }}
-                className="px-4 py-2 text-steno-charcoal hover:text-steno-navy font-medium transition-colors"
-              >
-                Sign Out
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+              }}
+              className="px-4 py-2 text-steno-charcoal hover:text-steno-navy font-medium transition-colors"
+            >
+              Sign Out
+            </button>
           </div>
         </div>
       </nav>

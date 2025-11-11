@@ -32,11 +32,6 @@ export class UserModel {
     return this.mapToUser(user);
   }
 
-  static async findAll(): Promise<User[]> {
-    const users = await db('users').orderBy('created_at', 'desc');
-    return users.map(this.mapToUser);
-  }
-
   static async update(id: string, updates: Partial<User>): Promise<User | null> {
     const [user] = await db('users')
       .where({ id })

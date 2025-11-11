@@ -4,7 +4,6 @@ import { DraftLetterModel } from '../models/DraftLetter';
 import { AIRefiner } from '../services/ai-refiner';
 import { DocumentProcessor } from '../services/document-processor';
 import { uploadToS3 } from '../config/s3';
-import { AnalyticsService } from '../services/analytics';
 import { RefineRequest } from '../../../shared/types';
 
 const PROCESSED_BUCKET = process.env.S3_BUCKET_PROCESSED || 'demand-letter-generator-dev-processed';
@@ -60,9 +59,6 @@ export const refineHandler = async (req: AuthRequest, res: Response): Promise<vo
       res.status(500).json({ success: false, error: 'Failed to update draft letter' });
       return;
     }
-
-    // Track analytics
-    await AnalyticsService.trackLetterRefined(userId, draftId);
 
     res.json({
       success: true,

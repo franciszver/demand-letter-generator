@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { PromptModel } from '../models/Prompt';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'gpt-4o';
@@ -10,24 +9,13 @@ export class AIRefiner {
    */
   static async refineLetter(
     currentDraft: string,
-    instructions: string,
-    promptId?: string
+    instructions: string
   ): Promise<string> {
     if (!OPENROUTER_API_KEY) {
       throw new Error('OpenRouter API key not configured');
     }
 
-    // Get custom prompt or use default
-    let promptContent: string;
-    if (promptId) {
-      const customPrompt = await PromptModel.findById(promptId);
-      if (customPrompt && customPrompt.type === 'refinement') {
-        promptContent = customPrompt.content
-          .replace('{{current_draft}}', currentDraft)
-          .replace('{{instructions}}', instructions);
-      } else {
-        // Fallback to default
-        promptContent = `Refine the following demand letter based on these instructions:
+    const prompt = `Refine the following demand letter based on these instructions:
 
 INSTRUCTIONS:
 ${instructions}
@@ -42,32 +30,6 @@ Please refine the letter according to the instructions while:
 4. Ensuring the letter remains suitable for legal correspondence
 
 Return only the refined letter content, no additional commentary.`;
-      }
-    } else {
-      // Use default prompt
-      const defaultPrompt = await PromptModel.findDefault('refinement');
-      if (defaultPrompt) {
-        promptContent = defaultPrompt.content
-          .replace('{{current_draft}}', currentDraft)
-          .replace('{{instructions}}', instructions);
-      } else {
-        promptContent = `Refine the following demand letter based on these instructions:
-
-INSTRUCTIONS:
-${instructions}
-
-CURRENT DRAFT:
-${currentDraft}
-
-Please refine the letter according to the instructions while:
-1. Maintaining legal accuracy
-2. Preserving professional tone
-3. Keeping all factual information intact unless specifically instructed to change it
-4. Ensuring the letter remains suitable for legal correspondence
-
-Return only the refined letter content, no additional commentary.`;
-      }
-    }
 
     try {
       const response = await axios.post(
@@ -81,7 +43,7 @@ Return only the refined letter content, no additional commentary.`;
             },
             {
               role: 'user',
-              content: promptContent,
+              content: prompt,
             },
           ],
           max_tokens: 4000,

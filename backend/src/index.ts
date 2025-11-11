@@ -18,17 +18,8 @@ import {
 } from './handlers/templates';
 import { exportHandler } from './handlers/export';
 import { registerHandler, loginHandler } from './handlers/auth';
-import { getDraftHandler, listDraftsHandler, updateDraftHandler } from './handlers/drafts';
+import { getDraftHandler, listDraftsHandler } from './handlers/drafts';
 import { getDocumentHandler } from './handlers/documents';
-import { requireAdmin } from './middleware/adminAuth';
-import { getContentHandler } from './handlers/admin/content';
-import { getAnalyticsHandler } from './handlers/admin/analytics';
-import { getHealthHandler } from './handlers/admin/health';
-import { getUsersHandler, createUserHandler, updateUserHandler, deleteUserHandler } from './handlers/admin/users';
-import { listWebhooksHandler, createWebhookHandler, updateWebhookHandler, deleteWebhookHandler, testWebhookHandler } from './handlers/webhooks';
-import { listPromptsHandler, getPromptHandler, createPromptHandler, updatePromptHandler, deletePromptHandler } from './handlers/prompts';
-import { listVersionsHandler, getVersionHandler, createVersionHandler } from './handlers/draft-versions';
-import { exportUserDataHandler } from './handlers/user-data';
 
 dotenv.config();
 
@@ -80,41 +71,9 @@ app.post('/api/export', authenticate, exportHandler);
 // Drafts endpoints
 app.get('/api/drafts', authenticate, listDraftsHandler);
 app.get('/api/drafts/:id', authenticate, getDraftHandler);
-app.patch('/api/drafts/:id', authenticate, updateDraftHandler);
 
 // Documents endpoint
 app.get('/api/documents/:id', authenticate, getDocumentHandler);
-
-// Admin endpoints
-app.get('/api/admin/content', authenticate, requireAdmin, getContentHandler);
-app.get('/api/admin/analytics', authenticate, requireAdmin, getAnalyticsHandler);
-app.get('/api/admin/health', authenticate, requireAdmin, getHealthHandler);
-app.get('/api/admin/users', authenticate, requireAdmin, getUsersHandler);
-app.post('/api/admin/users', authenticate, requireAdmin, createUserHandler);
-app.put('/api/admin/users/:id', authenticate, requireAdmin, updateUserHandler);
-app.delete('/api/admin/users/:id', authenticate, requireAdmin, deleteUserHandler);
-
-// Webhooks endpoints
-app.get('/api/webhooks', authenticate, listWebhooksHandler);
-app.post('/api/webhooks', authenticate, createWebhookHandler);
-app.put('/api/webhooks/:id', authenticate, updateWebhookHandler);
-app.delete('/api/webhooks/:id', authenticate, deleteWebhookHandler);
-app.post('/api/webhooks/:id/test', authenticate, testWebhookHandler);
-
-// Prompts endpoints
-app.get('/api/prompts', authenticate, listPromptsHandler);
-app.get('/api/prompts/:id', authenticate, getPromptHandler);
-app.post('/api/prompts', authenticate, createPromptHandler);
-app.put('/api/prompts/:id', authenticate, updatePromptHandler);
-app.delete('/api/prompts/:id', authenticate, deletePromptHandler);
-
-// Draft versions endpoints
-app.get('/api/drafts/:draftId/versions', authenticate, listVersionsHandler);
-app.get('/api/drafts/:draftId/versions/:versionNumber', authenticate, getVersionHandler);
-app.post('/api/drafts/:draftId/versions', authenticate, createVersionHandler);
-
-// User data export (GDPR)
-app.get('/api/user/data-export', authenticate, exportUserDataHandler);
 
 // Error handling
 app.use(errorHandler);

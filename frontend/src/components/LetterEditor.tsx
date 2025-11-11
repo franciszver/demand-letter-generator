@@ -31,8 +31,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
   const [refinementInstructions, setRefinementInstructions] = useState('');
   const [isRefining, setIsRefining] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Join collaboration session if draftId provided
   useEffect(() => {
@@ -54,20 +52,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
 
   // Auto-save functionality
   useEffect(() => {
-    const timer = setTimeout(async () => {
+    const timer = setTimeout(() => {
       const content = editorState.getCurrentContent().getPlainText();
-      if (content && onSave && draftId) {
-        setIsSaving(true);
-        setSaveError(null);
-        try {
-          await onSave(content);
-          setLastSaved(new Date());
-        } catch (error) {
-          setSaveError('Failed to save');
-          console.error('Auto-save error:', error);
-        } finally {
-          setIsSaving(false);
-        }
+      if (content && onSave) {
+        onSave(content);
+        setLastSaved(new Date());
       }
 
       // Broadcast changes if in collaboration mode
@@ -120,28 +109,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({
         />
       </div>
 
-      {/* Save status indicator */}
-      <div className="flex items-center gap-2 text-sm">
-        {isSaving && (
-          <span className="text-steno-teal flex items-center gap-1">
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            Saving...
-          </span>
-        )}
-        {!isSaving && lastSaved && (
-          <span className="text-steno-gray-500">
-            Last saved: {lastSaved.toLocaleTimeString()}
-          </span>
-        )}
-        {saveError && (
-          <span className="text-red-600">
-            {saveError}
-          </span>
-        )}
-      </div>
+      {/* Last saved indicator */}
+      {lastSaved && (
+        <div className="text-sm text-steno-gray-500">
+          Last saved: {lastSaved.toLocaleTimeString()}
+        </div>
+      )}
 
       {/* Refinement section */}
       {showRefinement && onRefine && (
