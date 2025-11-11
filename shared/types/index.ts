@@ -42,6 +42,8 @@ export interface DraftLetter {
   content: string;
   s3Key: string;
   version: number;
+  lastModifiedBy?: string;
+  lastModifiedAt?: string;
   status: 'draft' | 'generated' | 'refined' | 'final';
   createdAt: string;
   updatedAt: string;
@@ -82,5 +84,94 @@ export interface RefineRequest {
 export interface ExportResponse {
   downloadUrl: string;
   expiresAt: string;
+}
+
+// Phase 3 Types
+export interface UserProfile {
+  id: string;
+  userId: string;
+  communicationStyle?: string;
+  preferredTone?: string;
+  formalityLevel: number;
+  urgencyTendency: number;
+  empathyPreference: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RefinementHistory {
+  id: string;
+  draftLetterId: string;
+  userId: string;
+  promptText: string;
+  responseText?: string;
+  version: number;
+  metricsBefore?: LetterMetrics;
+  metricsAfter?: LetterMetrics;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LetterMetrics {
+  id: string;
+  draftLetterId: string;
+  intensity: number; // 1-10
+  seriousness: number; // 1-10
+  formality: number; // 1-10
+  clarity: number; // 1-10
+  persuasiveness: number; // 1-10
+  empathy: number; // 1-10
+  structureQuality: number; // 1-10
+  legalPrecision: number; // 1-10
+  calculatedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TimeTracking {
+  id: string;
+  userId: string;
+  draftLetterId: string;
+  actionType: 'upload' | 'generate' | 'refine' | 'export';
+  startTime: string;
+  endTime?: string;
+  estimatedManualTime?: number; // minutes
+  userReportedTime?: number; // minutes
+  timeSaved?: number; // minutes
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserRelationship {
+  id: string;
+  primaryUserId: string;
+  secondaryUserId: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CaseContext {
+  id: string;
+  draftLetterId: string;
+  userId: string;
+  relationshipDynamics?: string;
+  urgencyLevel: number;
+  previousInteractions?: string;
+  caseSensitivity?: string;
+  targetRecipientRole?: string;
+  targetRecipientOrg?: string;
+  targetRelationship?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GenerateRequestWithEQ extends GenerateRequest {
+  caseContext?: Partial<CaseContext>;
+}
+
+export interface RefineRequestWithHistory extends RefineRequest {
+  trackHistory?: boolean;
 }
 

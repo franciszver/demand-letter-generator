@@ -41,6 +41,19 @@ export class SessionModel {
     return updated > 0;
   }
 
+  /**
+   * Cleanup inactive sessions (older than 1 minute)
+   * Should be called periodically
+   */
+  static async cleanupInactiveSessions(): Promise<number> {
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const deleted = await db('sessions')
+      .where('last_activity', '<', oneMinuteAgo.toISOString())
+      .orWhere({ is_active: false })
+      .delete();
+    return deleted;
+  }
+
   private static mapToSession(row: any): Session {
     return {
       id: row.id,

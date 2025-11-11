@@ -43,13 +43,70 @@ export class DraftLetterModel {
         ...(updates.content && { content_summary: updates.content.substring(0, 500) }),
         ...(updates.s3Key && { s3_key: updates.s3Key }),
         ...(updates.status && { status: updates.status }),
+        ...(updates.lastModifiedBy && { last_modified_by: updates.lastModifiedBy }),
         version: existing.version + 1,
+        last_modified_at: new Date(),
         updated_at: new Date(),
       })
       .returning('*');
     
     if (!draft) return null;
     return this.mapToDraftLetter(draft);
+  }
+
+  /**
+   * Update draft with version check for conflict resolution
+   * Returns null if version mismatch (conflict)
+   */
+  static async updateWithVersionCheck(
+    id: string,
+    updates: Partial<DraftLetter>,
+    expectedVersion: number,
+    userId: string
+  ): Promise<{ draft: DraftLetter | null; conflict: boolean; currentVersion?: number }> {
+    const existing = await this.findById(id);
+    if (!existing) {
+      return { draft: null, conflict: false };
+    }
+
+    // Check version
+    if (existing.version !== expectedVersion) {
+      return {
+        draft: null,
+        conflict: true,
+        currentVersion: existing.version,
+      };
+    }
+
+    // Version matches - proceed with update
+    const [draft] = await db('draft_letters')
+      .where({ id, version: expectedVersion })
+      .update({
+        ...(updates.title && { title: updates.title }),
+        ...(updates.content && { content_summary: updates.content.substring(0, 500) }),
+        ...(updates.s3Key && { s3_key: updates.s3Key }),
+        ...(updates.status && { status: updates.status }),
+        last_modified_by: userId,
+        version: expectedVersion + 1,
+        last_modified_at: new Date(),
+        updated_at: new Date(),
+      })
+      .returning('*');
+    
+    if (!draft) {
+      // Another update happened - get current version
+      const current = await this.findById(id);
+      return {
+        draft: null,
+        conflict: true,
+        currentVersion: current?.version,
+      };
+    }
+
+    return {
+      draft: this.mapToDraftLetter(draft),
+      conflict: false,
+    };
   }
 
   private static mapToDraftLetter(row: any): DraftLetter {
@@ -62,6 +119,8 @@ export class DraftLetterModel {
       content: row.content_summary || '', // Full content from S3
       s3Key: row.s3_key,
       version: row.version,
+      lastModifiedBy: row.last_modified_by,
+      lastModifiedAt: row.last_modified_at ? row.last_modified_at.toISOString() : undefined,
       status: row.status,
       createdAt: row.created_at.toISOString(),
       updatedAt: row.updated_at.toISOString(),

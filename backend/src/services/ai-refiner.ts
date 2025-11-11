@@ -1,21 +1,24 @@
 import axios from 'axios';
+import { EQEnhancer } from './eq-enhancer';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'gpt-4o';
 
 export class AIRefiner {
   /**
-   * Refine demand letter based on instructions
+   * Refine demand letter based on instructions with EQ enhancement
    */
   static async refineLetter(
     currentDraft: string,
-    instructions: string
+    instructions: string,
+    userId?: string,
+    draftLetterId?: string
   ): Promise<string> {
     if (!OPENROUTER_API_KEY) {
       throw new Error('OpenRouter API key not configured');
     }
 
-    const prompt = `Refine the following demand letter based on these instructions:
+    let basePrompt = `Refine the following demand letter based on these instructions:
 
 INSTRUCTIONS:
 ${instructions}
@@ -30,6 +33,14 @@ Please refine the letter according to the instructions while:
 4. Ensuring the letter remains suitable for legal correspondence
 
 Return only the refined letter content, no additional commentary.`;
+
+    // Enhance prompt with EQ data if available
+    if (userId && draftLetterId) {
+      const eqContext = await EQEnhancer.getEQContext(userId, draftLetterId);
+      basePrompt = EQEnhancer.buildEQPrompt(basePrompt, eqContext);
+    }
+
+    const prompt = basePrompt;
 
     try {
       const response = await axios.post(

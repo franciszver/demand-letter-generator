@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { DraftLetterModel } from '../models/DraftLetter';
 import { DocumentProcessor } from '../services/document-processor';
+import { ConflictResolver } from '../services/conflict-resolver';
 
 export const getDraftHandler = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -68,8 +69,66 @@ export const listDraftsHandler = async (req: AuthRequest, res: Response): Promis
   }
 };
 
+export const updateDraftHandler = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    const { content, expectedVersion } = req.body;
+
+    if (!content || expectedVersion === undefined) {
+      res.status(400).json({
+        success: false,
+        error: 'Content and expectedVersion are required',
+      });
+      return;
+    }
+
+    // Use ConflictResolver to save with version check
+    const result = await ConflictResolver.saveWithConflictCheck(
+      id,
+      content,
+      userId,
+      expectedVersion
+    );
+
+    if (result.conflict) {
+      res.status(409).json({
+        success: false,
+        error: 'Conflict: Document was modified by another user',
+        conflict: true,
+        currentVersion: result.currentVersion,
+        serverContent: result.serverContent,
+      });
+      return;
+    }
+
+    if (!result.success || !result.draft) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update draft',
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        draft: result.draft,
+        version: result.newVersion,
+      },
+    });
+  } catch (error) {
+    console.error('Update draft error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update draft',
+    });
+  }
+};
+
 export const handler = {
   get: getDraftHandler,
   list: listDraftsHandler,
+  update: updateDraftHandler,
 };
 

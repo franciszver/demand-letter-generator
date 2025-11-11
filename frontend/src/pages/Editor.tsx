@@ -3,10 +3,12 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import LetterEditor from '../components/LetterEditor';
 import ExportButton from '../components/ExportButton';
+import EQDataForm from '../components/EQDataForm';
+import RefinementHistoryComponent from '../components/RefinementHistory';
 import { api } from '../services/api';
 import { wsService } from '../services/websocket';
 import { toast } from 'react-toastify';
-import { DraftLetter, Document } from '../../../shared/types';
+import { DraftLetter, Document, CaseContext } from '../../../shared/types';
 
 const Editor: React.FC = () => {
   const { draftId } = useParams<{ draftId?: string }>();
@@ -20,6 +22,9 @@ const Editor: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>();
   const [activeUsers, setActiveUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [showCaseContext, setShowCaseContext] = useState(false);
+  const [caseContext, setCaseContext] = useState<Partial<CaseContext>>({});
+  const [showRefinementHistory, setShowRefinementHistory] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -146,9 +151,13 @@ const Editor: React.FC = () => {
 
     setGenerating(true);
     try {
-      const response = await api.post<{ success: boolean; data: { draftId: string; content: string } }>(
+      const response = await api.post<{ success: boolean; data: { draftId: string; content: string; metrics?: any } }>(
         '/generate',
-        { documentId, templateId: selectedTemplateId }
+        { 
+          documentId, 
+          templateId: selectedTemplateId,
+          caseContext: Object.keys(caseContext).length > 0 ? caseContext : undefined
+        }
       );
 
       if (response.data.success && response.data.data) {
@@ -157,19 +166,26 @@ const Editor: React.FC = () => {
         
         // Set the draft immediately with the content from the response
         // This ensures the editor shows content right away without waiting for a reload
-        setDraft({
-          id: newDraftId,
-          content: draftContent,
-          userId: user?.id || '',
-          documentId: documentId!,
-          templateId: selectedTemplateId,
-          title: `Demand Letter - ${document?.originalName || 'Untitled'}`,
-          s3Key: '', // Will be loaded by loadDraft
-          version: 1,
-          status: 'generated',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        } as DraftLetter);
+        // Load full draft to get version
+        const draftResponse = await api.get<{ success: boolean; data: DraftLetter }>(`/drafts/${newDraftId}`);
+        if (draftResponse.data.success && draftResponse.data.data) {
+          setDraft(draftResponse.data.data);
+        } else {
+          // Fallback if draft load fails
+          setDraft({
+            id: newDraftId,
+            content: draftContent,
+            userId: user?.id || '',
+            documentId: documentId!,
+            templateId: selectedTemplateId,
+            title: `Demand Letter - ${document?.originalName || 'Untitled'}`,
+            s3Key: '',
+            version: 1,
+            status: 'generated',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as DraftLetter);
+        }
         
         setLoading(false); // Stop loading since we have the content
         toast.success('Demand letter draft created successfully!');
@@ -195,8 +211,12 @@ const Editor: React.FC = () => {
       });
 
       if (response.data.success && response.data.data) {
-        // Update draft content
-        setDraft((prev) => (prev ? { ...prev, content: response.data.data!.content } : null));
+        // Update draft content and version
+        setDraft((prev) => (prev ? { 
+          ...prev, 
+          content: response.data.data!.content,
+          version: response.data.data!.version || prev.version
+        } : null));
       }
     } catch (error: any) {
       throw error;
@@ -240,31 +260,71 @@ const Editor: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!draftId && documentId && (
-          <div className="mb-6 p-6 bg-gradient-to-r from-steno-teal/10 to-steno-teal/5 border border-steno-teal/20 rounded-lg">
-            <h2 className="text-lg font-heading font-semibold mb-2 text-steno-navy">Create Demand Letter Draft</h2>
-            <p className="text-steno-charcoal mb-4">
-              Case document uploaded successfully. Select a firm template (optional) and create your demand letter draft.
-            </p>
-            <div className="flex gap-4">
-              <button
-                onClick={handleGenerate}
-                disabled={generating}
-                className="px-6 py-2 bg-steno-navy text-white rounded-lg hover:bg-steno-navy-dark disabled:opacity-50 font-medium transition-colors"
-              >
-                {generating ? 'Creating Draft...' : 'Create Demand Letter Draft'}
-              </button>
+          <div className="mb-6 space-y-4">
+            <div className="p-6 bg-gradient-to-r from-steno-teal/10 to-steno-teal/5 border border-steno-teal/20 rounded-lg">
+              <h2 className="text-lg font-heading font-semibold mb-2 text-steno-navy">Create Demand Letter Draft</h2>
+              <p className="text-steno-charcoal mb-4">
+                Case document uploaded successfully. Optionally provide case context to enhance the letter generation.
+              </p>
+              <div className="flex gap-4 mb-4">
+                <button
+                  onClick={() => setShowCaseContext(!showCaseContext)}
+                  className="px-4 py-2 bg-steno-teal text-white rounded-lg hover:bg-steno-teal-dark font-medium transition-colors"
+                >
+                  {showCaseContext ? 'Hide' : 'Add'} Case Context
+                </button>
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className="px-6 py-2 bg-steno-navy text-white rounded-lg hover:bg-steno-navy-dark disabled:opacity-50 font-medium transition-colors"
+                >
+                  {generating ? 'Creating Draft...' : 'Create Demand Letter Draft'}
+                </button>
+              </div>
             </div>
+
+            {showCaseContext && user && (
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <EQDataForm 
+                  userId={user.id} 
+                  mode="case-context"
+                  onCaseContextChange={(context) => setCaseContext(context)}
+                  onSave={(context) => {
+                    if (context) setCaseContext(context);
+                    setShowCaseContext(false);
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
 
         {draftId && (
-          <LetterEditor
-            draftId={draftId}
-            initialContent={draft?.content}
-            onSave={handleSave}
-            onRefine={handleRefine}
-            activeUsers={activeUsers}
-          />
+          <div className="space-y-6">
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowRefinementHistory(!showRefinementHistory)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+              >
+                {showRefinementHistory ? 'Hide' : 'Show'} Refinement History
+              </button>
+            </div>
+
+            {showRefinementHistory && (
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h3 className="text-lg font-semibold mb-4">Refinement History</h3>
+                <RefinementHistoryComponent draftLetterId={draftId} />
+              </div>
+            )}
+
+            <LetterEditor
+              draftId={draftId}
+              initialContent={draft?.content}
+              onSave={handleSave}
+              onRefine={handleRefine}
+              activeUsers={activeUsers}
+            />
+          </div>
         )}
       </main>
     </div>

@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { DocumentProcessor } from './document-processor';
 import { TemplateModel } from '../models/Template';
+import { EQEnhancer } from './eq-enhancer';
+import { GenerateRequestWithEQ } from '../../../shared/types';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'gpt-4o';
@@ -83,11 +85,13 @@ ${documentText.substring(0, 8000)}`;
   }
 
   /**
-   * Generate demand letter from document analysis
+   * Generate demand letter from document analysis with EQ enhancement
    */
   static async generateLetter(
     analysis: DocumentAnalysis,
-    templateId?: string
+    templateId?: string,
+    userId?: string,
+    draftLetterId?: string
   ): Promise<LetterGenerationResult> {
     if (!OPENROUTER_API_KEY) {
       throw new Error('OpenRouter API key not configured');
@@ -101,7 +105,7 @@ ${documentText.substring(0, 8000)}`;
       }
     }
 
-    const prompt = `Generate a professional demand letter based on the following information:
+    let basePrompt = `Generate a professional demand letter based on the following information:
 
 FACTS:
 ${analysis.facts.join('\n')}
@@ -132,6 +136,14 @@ Generate a professional, firm demand letter that:
 ${templateContent ? 'Use the template structure provided, replacing variables like {{client_name}}, {{date}}, etc. with appropriate values from the analysis.' : ''}
 
 Return only the letter content, no additional commentary.`;
+
+    // Enhance prompt with EQ data if available
+    if (userId && draftLetterId) {
+      const eqContext = await EQEnhancer.getEQContext(userId, draftLetterId);
+      basePrompt = EQEnhancer.buildEQPrompt(basePrompt, eqContext);
+    }
+
+    const prompt = basePrompt;
 
     try {
       const response = await axios.post(

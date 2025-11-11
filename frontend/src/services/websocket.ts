@@ -1,17 +1,24 @@
 import { io, Socket } from 'socket.io-client';
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:3001';
+const WS_URL = import.meta.env.VITE_WS_URL;
 
 export class WebSocketService {
   private socket: Socket | null = null;
   private token: string | null = null;
 
   connect(token: string): void {
+    // Only connect if WebSocket URL is configured
+    if (!WS_URL) {
+      console.warn('WebSocket URL not configured. Real-time collaboration disabled.');
+      return;
+    }
+
     this.token = token;
-    this.socket = io(WS_URL, {
-      auth: { token },
-      transports: ['websocket'],
-    });
+    try {
+      this.socket = io(WS_URL, {
+        auth: { token },
+        transports: ['websocket'],
+      });
 
     this.socket.on('connect', () => {
       console.log('WebSocket connected');
@@ -21,9 +28,17 @@ export class WebSocketService {
       console.log('WebSocket disconnected');
     });
 
-    this.socket.on('error', (error) => {
-      console.error('WebSocket error:', error);
-    });
+      this.socket.on('error', (error) => {
+        console.error('WebSocket error:', error);
+      });
+    } catch (error) {
+      console.warn('Failed to connect WebSocket:', error);
+      this.socket = null;
+    }
+  }
+
+  isConnected(): boolean {
+    return this.socket?.connected || false;
   }
 
   disconnect(): void {
@@ -34,7 +49,7 @@ export class WebSocketService {
   }
 
   joinDraft(draftLetterId: string): void {
-    if (this.socket) {
+    if (this.socket && this.isConnected()) {
       this.socket.emit('join-draft', draftLetterId);
     }
   }
@@ -70,13 +85,13 @@ export class WebSocketService {
   }
 
   sendContentChange(draftLetterId: string, content: string, change: any): void {
-    if (this.socket) {
+    if (this.socket && this.isConnected()) {
       this.socket.emit('content-change', { draftLetterId, content, change });
     }
   }
 
   sendCursorPosition(draftLetterId: string, position: any): void {
-    if (this.socket) {
+    if (this.socket && this.isConnected()) {
       this.socket.emit('cursor-position', { draftLetterId, position });
     }
   }

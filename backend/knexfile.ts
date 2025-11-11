@@ -30,7 +30,11 @@ const config: { [key: string]: KnexConfig } = {
       port: parseInt(process.env.DB_PORT || '5432', 10),
       database: process.env.DB_NAME || 'demand_letter_generator',
       user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'postgres',
+      // Allow default for local development, but warn
+      password: process.env.DB_PASSWORD || (() => {
+        console.warn('⚠️  WARNING: DB_PASSWORD not set, using default "postgres" for local development only');
+        return 'postgres';
+      })(),
     },
     pool: {
       min: 2,

@@ -48,12 +48,13 @@ Parameters:
 
 Globals:
   Function:
-    Timeout: 30
+    Timeout: 60  # Increased for AI operations
     MemorySize: 1024
     Runtime: nodejs18.x
     Environment:
       Variables:
         NODE_ENV: !Ref Environment
+        AWS_LAMBDA_FUNCTION_NAME: !Sub '${ApiHandler}-${Environment}'  # Detect Lambda environment
         DB_HOST: !Ref DatabaseHost
         DB_PORT: !Ref DatabasePort
         DB_NAME: !Ref DatabaseName
@@ -148,37 +149,78 @@ Resources:
                   - !Sub '${ExportsBucket}/*'
                   - !Sub '${ExportsBucket}'
 
-  # API Gateway
-  ApiGateway:
-    Type: AWS::Serverless::Api
-    Properties:
-      StageName: !Ref Environment
-      Cors:
-        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS,PATCH'"
-        AllowHeaders: "'Content-Type,Authorization'"
-        AllowOrigin: !Ref CorsOrigin
-        MaxAge: "'600'"
-
-  # Single Express Lambda Function
+  # Single Express Lambda Function (no Events to avoid SAM circular dependency)
   ApiHandler:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../backend
       Handler: dist/lambda.handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Events:
-        ApiEvent:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /{proxy+}
-            Method: ANY
-        RootApiEvent:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /
-            Method: ANY
+      Timeout: 60  # Increased for AI operations
+      MemorySize: 1024  # Sufficient for AI processing
+
+  # API Gateway RestApi (plain CloudFormation, no SAM transform)
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub 'demand-letter-generator-${Environment}'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      BinaryMediaTypes:
+        - "image/*"
+        - "application/pdf"
+        - "application/msword"
+        - "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+  # API Gateway Proxy Resource
+  ApiGatewayProxyResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: '{proxy+}'
+
+  # API Gateway Method for root
+  ApiGatewayRootMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !GetAtt ApiGateway.RootResourceId
+      HttpMethod: ANY
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApiHandler.Arn}/invocations'
+
+  # API Gateway Method for proxy
+  ApiGatewayProxyMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiGatewayProxyResource
+      HttpMethod: ANY
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApiHandler.Arn}/invocations'
+
+  # API Gateway Deployment (no explicit DependsOn - CloudFormation will infer from Method references)
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: !Ref Environment
+
+  # Lambda Permission (no SourceArn to break circular dependency - less secure but necessary)
+  ApiGatewayLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiHandler
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
 
 Outputs:
   ApiUrl:

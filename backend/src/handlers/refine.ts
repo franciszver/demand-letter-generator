@@ -1,17 +1,23 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { DraftLetterModel } from '../models/DraftLetter';
+import { RefinementHistoryModel } from '../models/RefinementHistory';
+import { LetterMetricsModel } from '../models/LetterMetrics';
 import { AIRefiner } from '../services/ai-refiner';
 import { DocumentProcessor } from '../services/document-processor';
+import { MetricsCalculator } from '../services/metrics-calculator';
+import { TimeTracker } from '../services/time-tracker';
 import { uploadToS3 } from '../config/s3';
-import { RefineRequest } from '../../../shared/types';
+import { RefineRequestWithHistory } from '../../../shared/types';
 
 const PROCESSED_BUCKET = process.env.S3_BUCKET_PROCESSED || 'demand-letter-generator-dev-processed';
 
 export const refineHandler = async (req: AuthRequest, res: Response): Promise<void> => {
+  let trackingId: string | null = null;
+
   try {
     const userId = req.user!.id;
-    const { draftId, instructions }: RefineRequest = req.body;
+    const { draftId, instructions, trackHistory = true }: RefineRequestWithHistory = req.body;
 
     if (!draftId || !instructions) {
       res.status(400).json({ success: false, error: 'Draft ID and instructions are required' });
@@ -30,6 +36,14 @@ export const refineHandler = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    // Start time tracking
+    trackingId = await TimeTracker.startTracking(
+      userId,
+      draftId,
+      'refine',
+      30 // Estimated 30 minutes for manual refinement
+    );
+
     // Get full content from S3, fall back to database content if S3 fails
     let currentContent = draftLetter.content;
     if (draftLetter.s3Key) {
@@ -41,8 +55,21 @@ export const refineHandler = async (req: AuthRequest, res: Response): Promise<vo
       }
     }
 
-    // Refine letter
-    const refinedContent = await AIRefiner.refineLetter(currentContent, instructions);
+    // Get metrics before refinement if tracking history
+    let metricsBefore = null;
+    if (trackHistory) {
+      metricsBefore = await LetterMetricsModel.findLatestByDraftLetterId(draftId);
+      if (!metricsBefore) {
+        // Calculate if doesn't exist
+        const calculated = await MetricsCalculator.calculateMetrics(currentContent);
+        metricsBefore = await LetterMetricsModel.create(
+          MetricsCalculator.toLetterMetrics(draftId, calculated)
+        );
+      }
+    }
+
+    // Refine letter with EQ enhancement
+    const refinedContent = await AIRefiner.refineLetter(currentContent, instructions, userId, draftId);
 
     // Store refined content in S3
     const refinedS3Key = `letters/${userId}/${Date.now()}-refined-${draftId}.txt`;
@@ -60,16 +87,49 @@ export const refineHandler = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    // Calculate metrics after refinement
+    const metricsAfterAnalysis = await MetricsCalculator.calculateMetrics(refinedContent);
+    const metricsAfter = await LetterMetricsModel.create(
+      MetricsCalculator.toLetterMetrics(draftId, metricsAfterAnalysis)
+    );
+
+    // Track refinement history
+    if (trackHistory) {
+      await RefinementHistoryModel.create({
+        draftLetterId: draftId,
+        userId,
+        promptText: instructions,
+        responseText: refinedContent.substring(0, 1000), // Store summary
+        version: updatedDraft.version,
+        metricsBefore: metricsBefore || undefined,
+        metricsAfter,
+      });
+    }
+
+    // End time tracking
+    if (trackingId) {
+      await TimeTracker.endTracking(trackingId);
+    }
+
     res.json({
       success: true,
       data: {
         draftId: updatedDraft.id,
         content: refinedContent,
         version: updatedDraft.version,
+        metrics: metricsAfterAnalysis,
       },
     });
   } catch (error) {
     console.error('Refine error:', error);
+    // End tracking even on error
+    if (trackingId) {
+      try {
+        await TimeTracker.endTracking(trackingId);
+      } catch (trackError) {
+        console.error('Failed to end tracking:', trackError);
+      }
+    }
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Letter refinement failed',

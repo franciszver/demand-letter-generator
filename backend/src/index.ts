@@ -18,17 +18,41 @@ import {
 } from './handlers/templates';
 import { exportHandler } from './handlers/export';
 import { registerHandler, loginHandler } from './handlers/auth';
-import { getDraftHandler, listDraftsHandler } from './handlers/drafts';
+import { getDraftHandler, listDraftsHandler, updateDraftHandler } from './handlers/drafts';
 import { getDocumentHandler } from './handlers/documents';
+import { createOrUpdateUserProfileHandler, getUserProfileHandler } from './handlers/user-profiles';
+import { getMetricsHandler, getTimeSavedHandler, getUsersHandler, requireAdmin } from './handlers/admin';
+import { getDraftMetricsHandler, calculateMetricsHandler } from './handlers/metrics';
+import { createRelationshipHandler, listRelationshipsHandler, deactivateRelationshipHandler } from './handlers/user-relationships';
+import { getRefinementHistoryHandler } from './handlers/draft-versions';
+import { getDraftActivityHandler } from './handlers/activity';
 
 dotenv.config();
+
+// Validate required environment variables on startup
+const requiredEnvVars = ['JWT_SECRET'];
+if (process.env.NODE_ENV === 'production') {
+  requiredEnvVars.push('DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD');
+}
+
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+if (missingVars.length > 0) {
+  console.error('❌ Missing required environment variables:');
+  missingVars.forEach(varName => console.error(`   - ${varName}`));
+  console.error('\nPlease set these variables before starting the application.');
+  process.exit(1);
+}
 
 const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 3001;
 
-// Initialize collaboration service
-const collaborationService = new CollaborationService(httpServer);
+// Initialize collaboration service only if not in Lambda
+// Lambda doesn't support persistent WebSocket connections
+let collaborationService: CollaborationService | null = null;
+if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  collaborationService = new CollaborationService(httpServer);
+}
 
 // Middleware
 app.use(cors({
@@ -41,8 +65,31 @@ app.use(apiLimiter);
 app.use(auditLog);
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  const basicHealth = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  };
+
+  // If detailed query param is provided, include resource status
+  if (req.query.detailed === 'true') {
+    try {
+      const { checkResourceHealth } = await import('./utils/verify-resources');
+      const health = await checkResourceHealth();
+      res.json({
+        ...basicHealth,
+        resources: health.details,
+        healthy: health.healthy,
+      });
+    } catch (error) {
+      res.json({
+        ...basicHealth,
+        resources: { error: 'Resource check failed' },
+      });
+    }
+  } else {
+    res.json(basicHealth);
+  }
 });
 
 // Auth routes (no authentication required)
@@ -71,9 +118,34 @@ app.post('/api/export', authenticate, exportHandler);
 // Drafts endpoints
 app.get('/api/drafts', authenticate, listDraftsHandler);
 app.get('/api/drafts/:id', authenticate, getDraftHandler);
+app.patch('/api/drafts/:id', authenticate, updateDraftHandler);
 
 // Documents endpoint
 app.get('/api/documents/:id', authenticate, getDocumentHandler);
+
+// Phase 3: User Profiles
+app.post('/api/user-profiles', authenticate, createOrUpdateUserProfileHandler);
+app.get('/api/user-profiles/:id?', authenticate, getUserProfileHandler);
+
+// Phase 3: Admin endpoints
+app.get('/api/admin/metrics', authenticate, requireAdmin, getMetricsHandler);
+app.get('/api/admin/time-saved', authenticate, requireAdmin, getTimeSavedHandler);
+app.get('/api/admin/users', authenticate, requireAdmin, getUsersHandler);
+
+// Phase 3: Metrics endpoints
+app.get('/api/drafts/:id/metrics', authenticate, getDraftMetricsHandler);
+app.post('/api/metrics/calculate', authenticate, calculateMetricsHandler);
+
+// Phase 3: Refinement history
+app.get('/api/drafts/:id/history', authenticate, getRefinementHistoryHandler);
+
+// Phase 3: Draft activity (polling-based collaboration)
+app.get('/api/drafts/:id/activity', authenticate, getDraftActivityHandler);
+
+// Phase 3: User relationships
+app.post('/api/user-relationships', authenticate, createRelationshipHandler);
+app.get('/api/user-relationships', authenticate, listRelationshipsHandler);
+app.post('/api/user-relationships/deactivate', authenticate, deactivateRelationshipHandler);
 
 // Error handling
 app.use(errorHandler);

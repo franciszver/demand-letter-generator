@@ -8,7 +8,7 @@ import { DraftLetter } from '../../../shared/types';
 import { toast } from 'react-toastify';
 
 const Home: React.FC = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const navigate = useNavigate();
   const [recentDrafts, setRecentDrafts] = useState<DraftLetter[]>([]);
   const [loadingDrafts, setLoadingDrafts] = useState(true);
@@ -63,16 +63,40 @@ const Home: React.FC = () => {
               <h1 className="text-2xl font-heading font-bold text-steno-navy">Steno Draft</h1>
               <span className="text-xs text-steno-teal-dark font-semibold hidden sm:inline bg-steno-teal/10 px-3 py-1 rounded-full">Generate demand letters in minutes, not hours.</span>
             </div>
-            <button
-              onClick={() => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = '/login';
-              }}
-              className="px-4 py-2 text-steno-charcoal hover:text-steno-navy font-medium transition-colors"
-            >
-              Sign Out
-            </button>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/profile')}
+                className="px-3 py-2 text-steno-charcoal hover:text-steno-navy font-medium transition-colors"
+              >
+                Profile
+              </button>
+              {user?.role === 'attorney' || user?.role === 'admin' ? (
+                <button
+                  onClick={() => navigate('/users')}
+                  className="px-3 py-2 text-steno-charcoal hover:text-steno-navy font-medium transition-colors"
+                >
+                  Users
+                </button>
+              ) : null}
+              {user?.role === 'admin' ? (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="px-3 py-2 text-steno-charcoal hover:text-steno-navy font-medium transition-colors"
+                >
+                  Admin
+                </button>
+              ) : null}
+              <button
+                onClick={() => {
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('user');
+                  window.location.href = '/login';
+                }}
+                className="px-4 py-2 text-steno-charcoal hover:text-steno-navy font-medium transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
       </nav>
